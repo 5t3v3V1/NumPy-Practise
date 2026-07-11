@@ -2,7 +2,7 @@ import numpy as np
 
 x = np.random.randn(100)
 y = np.random.randn(100)
-z_true = 3 * x + 4 * y + np.random.randn(100) * 0.5
+z_true = 1 * x + 5 * y + np.random.randn(100) * 0.5
 y_true = (z_true > 0).astype(float)
 print(np.mean(y_true))
 learning_rate = 0.01
