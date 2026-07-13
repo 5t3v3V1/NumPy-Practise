@@ -1,11 +1,13 @@
 import numpy as np
 
-x = np.random.randn(100)
-y = np.random.randn(100)
-M = np.column_stack((x, y))
-z_true = 4 * x + 5 * y + np.random.randn(100) * 0.5
-y_true = (z_true > 0).astype(float).reshape(-1, 1)
-print(np.mean(y_true))
+M = np.array([[0, 0],
+             [0, 1],
+             [1, 0],
+             [1, 1]])
+y_true = np.array([[0],
+                  [1],
+                  [1],
+                  [0]])
 learning_rate = 0.01
 epsilon = 1e-15
 
@@ -25,28 +27,41 @@ class Layer:
 
         return gradient @ self.weights.T
     
+    def update(self, rate):
+        self.weights -= rate * self.dweights
+        self.bias -= rate * self.dbias
+    
 class ReLU:
     def forward(self, x):
         self.inputs = x
-
         return np.maximum(0, x)
     
     def backward(self, gradient):
         return gradient * (self.inputs > 0)
     
+class Tanh:
+    def forward(self, x):
+        self.output = np.tanh(x)
+        return self.output
+    
+    def backward(self, gradient):
+        return gradient * (1 - self.output ** 2)
+    
 class Sigmoid:
     def forward(self, x):
-        return 1/(1 + np.exp(-x))
+        self.output = 1/(1 + np.exp(-x))
+        return self.output
 
 relu = ReLU()
+tanh = Tanh()
 sigmoid = Sigmoid()
-hidden = Layer(2, 3)
-output = Layer(3, 1)
+hidden = Layer(2, 4)
+output = Layer(4, 1)
 
 for i in range(1000):
     z_hidden = hidden.forward(M)
 
-    a_hidden = relu.forward(z_hidden)
+    a_hidden = tanh.forward(z_hidden)
 
     z_pred = output.forward(a_hidden)
     y_pred = sigmoid.forward(z_pred)
@@ -56,20 +71,17 @@ for i in range(1000):
     dloss = y_pred - y_true
 
     doutput = output.backward(dloss)
-    drelu = relu.backward(doutput)
-    hidden.backward(drelu)
+    dtanh = tanh.backward(doutput)
+    hidden.backward(dtanh)
     
-    output.weights -= learning_rate * output.dweights
-    output.bias -= learning_rate * output.dbias
-
-    hidden.weights -= learning_rate * hidden.dweights
-    hidden.bias -= learning_rate * hidden.dbias
+    output.update(learning_rate)
+    hidden.update(learning_rate)
 
     if i % 100 == 0:
         predictions = (y_pred >= 0.5).astype(float)
         print(np.unique(predictions, return_counts = True))
         accuracy = np.mean(predictions == y_true)
-        print(f"Step {i}, Loss: {loss:.4f}, Accuracy: {accuracy:.4f}, a1: {np.mean(a_hidden[:,0]):.4f}, a2: {np.mean(a_hidden[:,1]):.4f}, a3: {np.mean(a_hidden[:,2]):.4f}, w1: {output.weights[0][0]:.4f}, w2: {output.weights[1][0]:.4f}, w3: {output.weights[2][0]:.4f}, b: {output.bias:.4f}")
+        print(f"Step {i}, Loss: {loss:.4f}, Accuracy: {accuracy:.4f}, a1: {np.mean(a_hidden[:,0]):.4f}, a2: {np.mean(a_hidden[:,1]):.4f}, a3: {np.mean(a_hidden[:,2]):.4f}, Prediction: {np.array2string(y_pred, precision = 2, suffix = '', separator = ',')}")
 
 predictions = (y_pred >= 0.5).astype(float)
 accuracy = np.mean(predictions == y_true)
