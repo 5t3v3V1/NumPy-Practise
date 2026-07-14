@@ -11,6 +11,33 @@ y_true = np.array([[0],
 learning_rate = 0.01
 epsilon = 1e-15
 
+class NeuralNetwork():
+    def __init__(self, input, activation, output, sigmoid, criterion):
+        self.input = input
+        self.activation = activation
+        self.output = output
+        self.sigmoid = sigmoid
+        self.criterion = criterion
+
+    def forward(self, matrix):
+        z_hidden = self.input.forward(matrix)
+        a_hidden = self.activation.forward(z_hidden)
+        z_pred = self.output.forward(a_hidden)
+        y_pred = self.sigmoid.forward(z_pred)
+        self.y_pred = np.clip(y_pred, epsilon, 1 - epsilon)
+        return self.y_pred, a_hidden
+
+    def backward(self, true):
+        loss, dloss = self.criterion.forward(self.y_pred, true)
+        doutput = self.output.backward(dloss)
+        dtanh = self.activation.backward(doutput)
+        self.input.backward(dtanh)
+        return loss
+    
+    def update(self, learning_rate):
+        self.output.update(learning_rate)
+        self.input.update(learning_rate)
+
 class Layer:
     def __init__(self, input, output):
         self.weights = np.random.randn(input, output)
@@ -52,30 +79,20 @@ class Sigmoid:
         self.output = 1/(1 + np.exp(-x))
         return self.output
 
-relu = ReLU()
-tanh = Tanh()
-sigmoid = Sigmoid()
-hidden = Layer(2, 4)
-output = Layer(4, 1)
+class BinaryCrossEntropy:
+    def forward(self, y_pred, y_true):
+        loss = np.mean(-(y_true * np.log(y_pred) + (1 - y_true) * np.log(1 - y_pred)))
+        dloss = y_pred - y_true
+        return loss, dloss
+
+network = NeuralNetwork(Layer(2, 4), Tanh(), Layer(4, 1), Sigmoid(), BinaryCrossEntropy())
 
 for i in range(1000):
-    z_hidden = hidden.forward(M)
+    y_pred, a_hidden = network.forward(M)
 
-    a_hidden = tanh.forward(z_hidden)
+    loss = network.backward(y_true)
 
-    z_pred = output.forward(a_hidden)
-    y_pred = sigmoid.forward(z_pred)
-    y_pred = np.clip(y_pred, epsilon, 1 - epsilon)
-
-    loss = np.mean(-(y_true * np.log(y_pred) + (1 - y_true) * np.log(1 - y_pred)))
-    dloss = y_pred - y_true
-
-    doutput = output.backward(dloss)
-    dtanh = tanh.backward(doutput)
-    hidden.backward(dtanh)
-    
-    output.update(learning_rate)
-    hidden.update(learning_rate)
+    network.update(learning_rate)
 
     if i % 100 == 0:
         predictions = (y_pred >= 0.5).astype(float)
