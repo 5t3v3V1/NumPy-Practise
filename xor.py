@@ -11,32 +11,29 @@ y_true = np.array([[0],
 learning_rate = 0.01
 epsilon = 1e-15
 
+
 class NeuralNetwork():
-    def __init__(self, input, activation, output, sigmoid, criterion):
-        self.input = input
-        self.activation = activation
-        self.output = output
-        self.sigmoid = sigmoid
-        self.criterion = criterion
+    def __init__(self, layers):
+        self.layers = layers
 
     def forward(self, matrix):
-        z_hidden = self.input.forward(matrix)
-        a_hidden = self.activation.forward(z_hidden)
-        z_pred = self.output.forward(a_hidden)
-        y_pred = self.sigmoid.forward(z_pred)
-        self.y_pred = np.clip(y_pred, epsilon, 1 - epsilon)
-        return self.y_pred, a_hidden
+        inputs = matrix
+        for layer in self.layers:
+            inputs = layer.forward(inputs)
+        
+        self.y_pred = inputs
+        return self.y_pred
 
-    def backward(self, true):
-        loss, dloss = self.criterion.forward(self.y_pred, true)
-        doutput = self.output.backward(dloss)
-        dtanh = self.activation.backward(doutput)
-        self.input.backward(dtanh)
+    def backward(self, true, criterion):
+        loss, dloss = criterion.forward(self.y_pred, true)
+        gradient = dloss
+        for layer in reversed(self.layers):
+            gradient = layer.backward(gradient)
         return loss
     
     def update(self, learning_rate):
-        self.output.update(learning_rate)
-        self.input.update(learning_rate)
+        for layer in reversed(self.layers):
+            layer.update(learning_rate)
 
 class Layer:
     def __init__(self, input, output):
@@ -66,6 +63,9 @@ class ReLU:
     def backward(self, gradient):
         return gradient * (self.inputs > 0)
     
+    def update(self, learning_rate):
+        pass
+    
 class Tanh:
     def forward(self, x):
         self.output = np.tanh(x)
@@ -74,10 +74,19 @@ class Tanh:
     def backward(self, gradient):
         return gradient * (1 - self.output ** 2)
     
+    def update(self, learning_rate):
+        pass
+    
 class Sigmoid:
     def forward(self, x):
         self.output = 1/(1 + np.exp(-x))
         return self.output
+    
+    def backward(self, gradient):
+        return gradient
+
+    def update(self, learning_rate):
+        pass
 
 class BinaryCrossEntropy:
     def forward(self, y_pred, y_true):
@@ -85,22 +94,50 @@ class BinaryCrossEntropy:
         dloss = y_pred - y_true
         return loss, dloss
 
-network = NeuralNetwork(Layer(2, 4), Tanh(), Layer(4, 1), Sigmoid(), BinaryCrossEntropy())
+network = NeuralNetwork([
+    Layer(2, 8),
+    ReLU(),
+    Layer(8, 8),
+    Tanh(),
+    Layer(8, 1),
+    Sigmoid()
+])
+bce = BinaryCrossEntropy()
 
-for i in range(1000):
-    y_pred, a_hidden = network.forward(M)
+while True:
+    try:
+        print("1. Train")
+        print("2. Exit")
 
-    loss = network.backward(y_true)
+        choice = input("Choice: ")
 
-    network.update(learning_rate)
+        if choice == "1":
+            loops = int(input("Please input how many loops: "))
+        
+            for i in range(loops):
+                y_pred = network.forward(M)
 
-    if i % 100 == 0:
-        predictions = (y_pred >= 0.5).astype(float)
-        print(np.unique(predictions, return_counts = True))
-        accuracy = np.mean(predictions == y_true)
-        print(f"Step {i}, Loss: {loss:.4f}, Accuracy: {accuracy:.4f}, a1: {np.mean(a_hidden[:,0]):.4f}, a2: {np.mean(a_hidden[:,1]):.4f}, a3: {np.mean(a_hidden[:,2]):.4f}, Prediction: {np.array2string(y_pred, precision = 2, suffix = '', separator = ',')}")
+                loss = network.backward(y_true, bce)
 
-predictions = (y_pred >= 0.5).astype(float)
-accuracy = np.mean(predictions == y_true)
-print(accuracy)
+                network.update(learning_rate)
+
+                if i % 100 == 0:
+                    predictions = (y_pred >= 0.5).astype(float)
+                    print(np.unique(predictions, return_counts = True))
+                    accuracy = np.mean(predictions == y_true)
+                    print(f"Step {i}, Loss: {loss:.4f}, Accuracy: {accuracy:.4f}, Prediction: {np.array2string(y_pred, precision = 2, suffix = '', separator = ',')}")
+
+            predictions = (y_pred >= 0.5).astype(float)
+            accuracy = np.mean(predictions == y_true)
+            print(accuracy)
+        
+        elif choice == "2":
+            break
+
+        else:
+            print("Invalid Choice")
+        
+    except ValueError:
+        print("Please input a number")
+
 
