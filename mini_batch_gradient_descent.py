@@ -1,4 +1,5 @@
 import numpy as np
+import matplotlib.pyplot as plt
 
 x = np.random.randn(300)
 y = np.random.randn(300)
@@ -152,6 +153,8 @@ loss_function = CategoricalCrossEntropy()
 
 while True:
     try:
+        losses = []
+        accuracies = []
         print("-" * 40)
         print(loss_function.classification)
         print("-" * 40)
@@ -193,17 +196,36 @@ while True:
 
                     network.update(learning_rate)
 
+                predictions = np.argmax(network.forward(M), axis = 1)
+                true = np.argmax(y_true, axis=1)
+                accuracy = np.mean(predictions == true)
+                
+                losses.append(loss)
+                accuracies.append(accuracy)
+
                 if epoch % 100 == 0:
-                    predictions = np.argmax(y_pred, axis = 1)
-                    print(np.unique(predictions, return_counts = True))
-                    true = np.argmax(y_batch, axis=1)
+                    predictions = np.argmax(network.forward(M), axis = 1)
+                    true = np.argmax(y_true, axis=1)
                     accuracy = np.mean(predictions == true)
                     print(f"Epoch: {epoch}, Loss: {loss:.4f}, Accuracy: {accuracy:.4f}")
+                   
 
-            predictions = np.argmax(y_pred, axis=1)
-            true = np.argmax(y_batch, axis=1)
+
+            predictions = np.argmax(network.foward(M), axis=1)
+            true = np.argmax(y_true, axis=1)
             accuracy = np.mean(predictions == true)
-            print(accuracy)
+            print(f"Epoch: {epochs}, Loss: {loss:.4f}, Accuracy: {accuracy:.4f}")
+            plt.plot(losses)
+            plt.xlabel("Epoch")
+            plt.ylabel("Loss")
+            plt.title("Training Loss")
+            plt.show()
+
+            plt.plot(accuracies)
+            plt.xlabel("Epoch")
+            plt.ylabel("Accuracy")
+            plt.title("Training Accuracy")
+            plt.show()
         
         elif choice == "2":
             break
