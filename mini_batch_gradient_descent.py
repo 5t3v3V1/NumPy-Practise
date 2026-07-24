@@ -136,6 +136,7 @@ class CategoricalCrossEntropy:
         self.classification = "Loss Function: Categorical Cross Entropy"
 
     def forward(self, y_pred, y_true):
+        y_pred = np.clip(y_pred, epsilon, 1-epsilon)
         loss = -np.mean(np.sum(y_true * np.log(y_pred), axis = 1))
         dloss = y_pred - y_true
         return loss, dloss
@@ -150,11 +151,15 @@ network = NeuralNetwork([
 ])
 
 loss_function = CategoricalCrossEntropy()
+split1 = int(0.7 * len(M))
+split2 = int(0.85 * len(M))
 
 while True:
     try:
-        losses = []
-        accuracies = []
+        training_losses = []
+        training_accuracies = []
+        validation_losses = []
+        validation_accuracies = []
         print("-" * 40)
         print(loss_function.classification)
         print("-" * 40)
@@ -176,19 +181,32 @@ while True:
         if choice == "1":
             epochs = int(input("Please input how many epochs: "))
             batch_size = int(input("Please input batch size: "))
+
+            indices = np.random.permutation(len(M))
+                            
+            M = M[indices]
+            y_true = y_true[indices]
+
+            M_training = M[:split1]
+            M_validation = M[split1:split2]
+            M_test = M[split2:]
+
+            y_training = y_true[:split1]
+            y_validation = y_true[split1:split2]
+            y_test = y_true[split2:]
         
             for epoch in range(epochs):
-                indices = np.random.permutation(len(M))
-                
-                m_shuffled = M[indices]
-                y_true_shuffled = y_true[indices]
+                training_indices = np.random.permutation(len(M_training))
 
-                for start in range(0, len(M), batch_size):
+                M_training = M_training[training_indices]
+                y_training = y_training[training_indices]
+
+                for start in range(0, len(M_training), batch_size):
 
                     end = start + batch_size
 
-                    m_batch = m_shuffled[start:end]
-                    y_batch = y_true_shuffled[start:end]
+                    m_batch = M_training[start:end]
+                    y_batch = y_training[start:end]
 
                     y_pred = network.forward(m_batch)
 
@@ -196,35 +214,65 @@ while True:
 
                     network.update(learning_rate)
 
-                predictions = np.argmax(network.forward(M), axis = 1)
-                true = np.argmax(y_true, axis=1)
-                accuracy = np.mean(predictions == true)
-                
-                losses.append(loss)
-                accuracies.append(accuracy)
+                y_pred_validation = network.forward(M_validation)
 
-                if epoch % 100 == 0:
-                    predictions = np.argmax(network.forward(M), axis = 1)
-                    true = np.argmax(y_true, axis=1)
+                validation_loss, _ = loss_function.forward(y_pred_validation, y_validation)
+
+                if epoch % 10 == 0:
+                    validation_predictions = np.argmax(y_pred_validation, axis = 1)
+                    validation_true = np.argmax(y_validation, axis=1)
+                    validation_accuracy = np.mean(validation_predictions == validation_true)
+                    
+                    predictions = np.argmax(network.forward(M_training), axis = 1)
+                    true = np.argmax(y_training, axis=1)
                     accuracy = np.mean(predictions == true)
-                    print(f"Epoch: {epoch}, Loss: {loss:.4f}, Accuracy: {accuracy:.4f}")
+                    
+                                    
+                    training_losses.append(loss)
+                    training_accuracies.append(accuracy)
+                    validation_losses.append(validation_loss)
+                    validation_accuracies.append(validation_accuracy)
+                    
+                    print(f"Epoch: {epoch}, Training Loss: {loss:.4f}, Validation Loss {validation_loss:.4f}, Training Accuracy: {accuracy:.4f}, Validation Accuracy: {validation_accuracy:.4f}")
                    
+            y_pred_test = network.forward(M_test)
+                                
+            test_loss, _ = loss_function.forward(y_pred_test, y_test)
 
-
-            predictions = np.argmax(network.foward(M), axis=1)
-            true = np.argmax(y_true, axis=1)
-            accuracy = np.mean(predictions == true)
-            print(f"Epoch: {epochs}, Loss: {loss:.4f}, Accuracy: {accuracy:.4f}")
-            plt.plot(losses)
-            plt.xlabel("Epoch")
+            test_predictions = np.argmax(y_pred_test, axis = 1)
+            test_true = np.argmax(y_test, axis=1)
+            test_accuracy = np.mean(test_predictions == test_true)
+            
+            print(f"Epoch {epoch}, Test Loss: {test_loss:.4f}, Test Accuracy: {test_accuracy:.4f}")
+            
+            plt.plot(training_losses)
+            plt.xlabel("Epoch(Tens)")
             plt.ylabel("Loss")
             plt.title("Training Loss")
             plt.show()
 
-            plt.plot(accuracies)
-            plt.xlabel("Epoch")
+            plt.plot(validation_losses)
+            plt.xlabel("Epoch(Tens)")
+            plt.ylabel("Loss")
+            plt.title("Validation Loss")
+            plt.show()
+
+            plt.plot(training_accuracies)
+            plt.xlabel("Epoch(Tens)")
             plt.ylabel("Accuracy")
             plt.title("Training Accuracy")
+            plt.show()
+
+            plt.plot(training_accuracies)
+            plt.xlabel("Epoch(Tens)")
+            plt.ylabel("Accuracy")
+            plt.title("Training Accuracy")
+            plt.show()
+            
+            plt.plot(validation_accuracies)
+            plt.xlabel("Epoch(Tens)")
+            plt.ylabel("Accuracy")
+            plt.title("Validation Accuracy")
             plt.show()
         
         elif choice == "2":
