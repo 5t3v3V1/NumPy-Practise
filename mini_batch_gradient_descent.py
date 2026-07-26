@@ -41,7 +41,7 @@ class NeuralNetwork():
 class Layer:
     def __init__(self, input, output):
         self.trainable = True
-        self.weights = np.random.randn(input, output)
+        self.weights = np.random.randn(input, output) * np.sqrt(2 / input)
         self.bias = np.zeros(output)
         self.classification = f"Layer ({input} -> {output})\nWeights: ({input}, {output})\nBias: ({output})"
 
@@ -154,8 +154,11 @@ loss_function = CategoricalCrossEntropy()
 split1 = int(0.7 * len(M))
 split2 = int(0.85 * len(M))
 
+
+
 while True:
     try:
+        velocity = 0
         training_losses = []
         training_accuracies = []
         validation_losses = []
@@ -196,6 +199,9 @@ while True:
             y_test = y_true[split2:]
         
             for epoch in range(epochs):
+                if epoch % 100 == 0:
+                    learning_rate /= 5
+
                 training_indices = np.random.permutation(len(M_training))
 
                 M_training = M_training[training_indices]
@@ -255,12 +261,6 @@ while True:
             plt.xlabel("Epoch(Tens)")
             plt.ylabel("Loss")
             plt.title("Validation Loss")
-            plt.show()
-
-            plt.plot(training_accuracies)
-            plt.xlabel("Epoch(Tens)")
-            plt.ylabel("Accuracy")
-            plt.title("Training Accuracy")
             plt.show()
 
             plt.plot(training_accuracies)
