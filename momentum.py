@@ -45,6 +45,8 @@ class Layer:
         self.trainable = True
         self.weights = np.random.randn(input, output) * np.sqrt(2 / input)
         self.bias = np.zeros(output)
+        self.velocity_weights = np.zeros_like(self.weights)
+        self.velocity_bias = np.zeros_like(self.bias)
         self.classification = f"Layer ({input} -> {output})\nWeights: ({input}, {output})\nBias: ({output})"
 
     def forward(self, matrix):
@@ -59,8 +61,13 @@ class Layer:
         return gradient @ self.weights.T
     
     def update(self, rate):
-        self.weights -= rate * self.dweights
-        self.bias -= rate * self.dbias
+        beta = 0.9
+
+        self.velocity_weights = beta * self.velocity_weights - rate * self.dweights
+        self.velocity_bias = beta * self.velocity_bias - rate * self.dbias
+
+        self.weights += self.velocity_weights
+        self.bias += self.velocity_bias
     
 class ReLU:
     def __init__(self):
@@ -198,7 +205,7 @@ while True:
             y_test = y_true[split2:]
         
             for epoch in range(epochs):
-                if epoch % 100 == 0:
+                if epoch > 0 and epoch % 100 == 0:
                     learning_rate /= 5
 
                 training_indices = np.random.permutation(len(M_training))
